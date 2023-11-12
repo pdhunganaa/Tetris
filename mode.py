@@ -1,5 +1,7 @@
 import pygame
 import random
+import copy
+import math
 
 # Initialize Pygame
 pygame.init()
@@ -64,6 +66,17 @@ def remove_completed_rows(grid):
         del grid[row]
         grid.insert(0, [0] * GRID_WIDTH)
 
+# Function to rotate a shape by a given angle (in degrees)
+def rotate_shape(shape, angle):
+    if angle == 0:
+        return shape
+    elif angle == 90:
+        return [[shape[j][i] for j in range(len(shape))] for i in range(len(shape[0]))]
+    elif angle == 180:
+        return [[shape[i][j] for j in reversed(range(len(shape[0])))] for i in reversed(range(len(shape))]
+    elif angle == 270:
+        return [[shape[j][i] for j in reversed(range(len(shape)))] for i in range(len(shape[0]))]
+
 # Main game loop
 def main():
     clock = pygame.time.Clock()
@@ -73,6 +86,12 @@ def main():
     current_shape = random.choice(SHAPES)
     x, y = GRID_WIDTH // 2 - 1, 0
     shape_color = random.choice(COLORS)
+    fall_time = 0
+    fall_speed = 1  # Adjust this value to control the fall speed (higher values make it slower)
+
+    rotation_angle = 0
+    rotate_cooldown = 0
+    rotate_delay = 200  # Delay between rotations (in milliseconds)
 
     while not game_over:
         for event in pygame.event.get():
@@ -88,18 +107,31 @@ def main():
                 elif event.key == pygame.K_DOWN:
                     if is_valid_position(current_shape, x, y + 1, grid):
                         y += 1
+                elif event.key == pygame.K_UP:
+                    # Rotate the shape
+                    if rotate_cooldown <= 0:
+                        rotation_angle = (rotation_angle + 90) % 360
+                        rotated_shape = rotate_shape(current_shape, rotation_angle)
+                        if is_valid_position(rotated_shape, x, y, grid):
+                            current_shape = rotated_shape
+                        rotate_cooldown = rotate_delay
 
-        if is_valid_position(current_shape, x, y + 1, grid):
-            y += 1
-        else:
-            for row in range(len(current_shape)):
-                for col in range(len(current_shape[row])):
-                    if current_shape[row][col]:
-                        grid[y + row][x + col] = 1
-            remove_completed rows(grid)
-            current_shape = random.choice(SHAPES)
-            x, y = GRID_WIDTH // 2 - 1, 0
-            shape_color = random.choice(COLORS)
+        # Automatic falling
+        fall_time += clock.get_rawtime()
+        if fall_time > fall_speed:
+            if is_valid_position(current_shape, x, y + 1, grid):
+                y += 1
+            else:
+                for row in range(len(current_shape)):
+                    for col in range(len(current_shape[row]):
+                        if current_shape[row][col]:
+                            grid[y + row][x + col] = 1
+                remove_completed_rows(grid)
+                current_shape = random.choice(SHAPES)
+                x, y = GRID_WIDTH // 2 - 1, 0
+                shape_color = random.choice(COLORS)
+                rotation_angle = 0
+            fall_time = 0
 
         screen.fill((0, 0, 0))
         draw_grid()
@@ -110,7 +142,10 @@ def main():
                     pygame.draw.rect(screen, (255, 255, 255), (col * BLOCK_SIZE, row * BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE))
 
         pygame.display.update()
-        clock.tick(1)
+        clock.tick(60)  # Adjust the frame rate as needed
+
+        if rotate_cooldown > 0:
+            rotate_cooldown -= clock.get_rawtime()
 
     pygame.quit()
     quit()
